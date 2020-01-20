@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import requests as req
 
+import json
 
 header_login_load={
 
@@ -16,47 +17,73 @@ header_login_load={
 
 
 }
-user_id ="sdm821"
-
-
+# user_id ="gudrhks2"
+# user_id="sdm821"
+user_id="kistone3"
 
 login_url ="https://www.acmicpc.net/status?problem_id=&user_id="+user_id
 s = req.session()
 res =s.get(login_url,headers=header_login_load )
-loginhtml =res.text
-print(res.text)
+loginhtml = res.text
+# print(res.text)
 
 
 doc = BeautifulSoup(res.text, 'html.parser')
 
 rows =doc.select('tr[id*="solution-"]')
-solved =set()
 
-for r in rows:
-    tds =r.find_all('td')
-    res = tds[3].findChild().findChild().attrs.get("class")[0]
-    print(res)
-    if(res == "result-ac"):
-        solved.add(tds[2].text)
 
-while(True):
-    try:
-        login_url = "https://www.acmicpc.net" + doc.find("a", id="next_page")["href"]
-    except :
-        break
+solvedList = []
+solved = {}
+problems = []
 
-    res = s.get(login_url, headers=header_login_load)
-    loginhtml = res.text
+# def solveSet(list):
+#     res = []
+#     for e in list:
+#         if e not in problem:
+#             res.append(e)
+#             problem.add(e)
+#     return res
 
-    doc = BeautifulSoup(res.text, 'html.parser')
-    rows = doc.select('tr[id*="solution-"]')
-
+def search_curStatus(rows):
+    problem = {}
     for r in rows:
-        tds = r.find_all('td')
-        res = tds[3].findChild().findChild().attrs.get("class")[0]
-        print(res)
-        if (res == "result-ac"):
-            solved.add(tds[2].text)
+        tds =r.find_all('td')
+        problem['submission_id'] = tds[0].text
+        problem['problem_id'] = tds[2].a.text
+        problem['problem_title'] = tds[2].a['title']
+        problem['result'] = tds[3].findChild().findChild().attrs.get("class")[0]
+        problem['memory'] = tds[4].text
+        problem['time'] = tds[5].text
+        problem['language'] = tds[6].text
+        problem['length'] = tds[7].text
+        problem['date'] = tds[8].a['title']
+        if(problem['result'] == "reulst-ac"):
+            solved.add(problem['problem_id'])
+            # solvedList.append(problem['problem_id'])
+        problems.append(problem)
+
+def search_nextStatus(doc):
+    while(True):
+        try:
+            login_url = "https://www.acmicpc.net" + doc.find("a", id="next_page")["href"]
+        except :
+            break
+
+        res = s.get(login_url, headers=header_login_load)
+        loginhtml = res.text
+
+        doc = BeautifulSoup(res.text, 'html.parser')
+        rows = doc.select('tr[id*="solution-"]')
+        search_curStatus(rows)
+
+search_curStatus(rows)
+search_nextStatus(doc)
 
 
-print(len(solved))
+f = open(user_id+".json",'w')
+# print(problems,file=f)
+f.write(json.dumps(problems))
+# print(problems)
+# print(solved)
+f.close()
